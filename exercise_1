@@ -1,0 +1,204 @@
+la r1 u32 {
+   co=010001,
+   nwords=2,
+   r1 = reg(25,21),
+   u32=address(63,32)abs,
+   {
+       # MAR <- PC
+       (T2, C0),
+
+       # MBR <- Memoria[MAR], PC <- PC + 4
+       (TA, R, BW=11, M1, C1, M2, C2),
+
+       # R1 <- MBR, salto a fetch
+       (T1, SelC=10101, MR=0, LC, A0=1,B=1,C=0)
+   }
+}
+
+sc R1, R2, (R3) {
+   co=010010,
+   nwords=1,
+   R1 = reg(25,21),
+   R2 = reg(20,16),
+   R3 = reg(15,11),
+   {
+        #MAR <- R3
+        (SelA=1011, MR=0, T9, C0),
+
+        #MBR <- R1
+        (SelA=10101, MR=0, T9, M1=0, C1),
+
+        #Mem[MAR] <- MBR
+        (Ta, Bw=11, Td, w),
+
+        #MAR <- R3 + 4
+        (SelA=1011, MR=0, MA=0, MB=10, SelCop=1010, MC, T6, C0),
+
+        #MBR <- R2
+        (SelA=10000, MR=0, T9, M1=0, C1),
+
+        #Mem[MAR] <- MBR, salto a fetch
+        (Ta, Bw=11, Td, w, A0, B, C=0)
+	
+          
+   }
+}
+
+lc R1, R2, (R3) {
+   co=010011,
+   nwords=1,
+   R1 = reg(25,21),
+   R2 = reg(20,16),
+   R3 = reg(15,11),
+   {
+        #MAR <- R3
+        (SelA=1011, MR=0, T9, C0),
+
+	#Rt1 <- R3
+	(SelA=1011, MR=0, T9, C4)
+
+        #MBR <- Mem[MAR]
+        (Ta, r, Bw=11, M1, C1),
+
+        #R1 <- MBR
+        (T1, LC, SelC=10101, MR=0),
+
+        #MAR <- Rt1 + 4
+        (MA, MB=10, SelCop=1010, MC, T6, C0),
+
+        #MBR <- Mem[MAR]
+        (Ta, r, Bw=11, M1, C1),
+
+        #R2 <- MBR, salto a fecth
+        (T1, LC, SelC=10000, MR=0, A0, B, C=0)
+          
+   }
+}
+
+addc R1, R2, R3, R4 {
+   co=010100,
+   nwords=1,
+   R1 = reg(25,21),
+   R2 = reg(20,16),
+   R3 = reg(15,11),
+   R4 = reg(10,6),
+   {
+       	# R1 <- R1 + R3
+  	(SelA=10101, SelB=01011, MR=0, MA=0, MB=00, MC, SelCop=01010, SelP=11, M7, C7, T6, SelC=10101, LC),
+				
+	# R2 <- R2 + R4, Salto a fetch
+      	(SelA=10000, SelB=00110, MR=0, MA=0, MB=00, MC, SelCop=01010, T6, SelC=10000, LC, A0, B, C=0)
+
+   }
+}
+  
+mulc R1, R2, R3, R4 {
+   co=010101,
+   nwords=1,
+   R1 = reg(25,21),
+   R2 = reg(20,16),
+   R3 = reg(15,11),
+   R4 = reg(10,6),
+   {
+       	# Rt1 <- R1 * R3
+  	(SelA=10101, SelB= 01011, MR=0, MA=0, MB=00, SelCop=1100, MC, T6, C4),
+
+        # Rt2 <- R2 * R4
+        (SelA=10000, SelB=00110, MR=0, MA=0, MB=00, SelCop=1100, MC, T6, C5),
+
+        # R4 <- R1 * R4
+        (SelA=10101, SelB= 00110, MR=0, MA=0, MB=00, SelCop=1100, MC, T6, SelC=00110, LC),
+
+        # R3 <- R2 * R3
+        (SelA=10000, SelB=01011, MR=0, MA=0, MB=00, SelCop=1100, MC, T6, SelC=10000, LC),
+
+        #R1 <- Rt1 - Rt2
+        (MA, MB=01, SelCop=1011, MC, T6, SelC=10101, MR=0, LC, SelP=11, M7, C7),
+
+        # R2 <- R2 + R4, Salto a fetch
+        (SelA=10000, SelB=00110, MR=0, MA=0, MB=00, SelCop=1010, MC, T6, SelC=10000, LC, A0, B, C=0)
+
+        
+   }
+}
+  
+beqc R1 R2 R3 R4 S6 {
+   co=110100,
+   nwords=1,
+   R1=reg(25,21),
+   R2=reg(20,16),
+   R3=reg(15,11),
+   R4=reg(10,6),
+   S6=address(5,0)rel,
+   {
+             # MBR <- SR
+             (T8, M1=0, C1),
+
+             # R1 - R3, actualizar SR.Z
+             (MR=0, SELA=10101, SELB=1011,  MA=0, MB=0, MC, SELCOP=1011, SELP=11, M7, C7),
+
+             # si (SR.Z == 1) salto a fetch
+             (C=110, B, A0=0, MADDR=saf),
+
+             # R2 - R4, actualizar SR.Z
+             (MR=0, SELA=10000, SELB=110,  MA=0, MB=0, MC, SELCOP=1011, SELP=11, M7, C7),
+
+             # si (SR.Z == 1) salto a fetch
+             (C=110, B, A0=0, MADDR=saf),
+
+             # RT1 <- IR[s6]
+             (Offset=0, Size=110, SE, T3, C4),
+
+             # RT2 <- PC
+             (T2, C5), 
+
+             # PC <- RT1 + RT2
+             (MA, MB, MC=1, SELCOP=1010, T6, M2=0, C2),
+
+             # salto a fetch
+        saf: (T1, M7=0, C7, A0, B, C=0)
+             
+   }
+}
+  
+call u20 {
+    co=100001,
+    nwords=1,
+    u20=address(19,0)abs,
+    
+   {
+          
+        #Ra <- PC
+	(T2, SelC=1, MR, LC),
+	
+	#PC <- IR[U20], salto a fecth
+        (Size=10100, Offset=0, T3, M2=0, C2, A0, B, C=0)
+
+          
+   }
+}
+
+ret {
+   co=100010,
+   nwords=1,
+   {
+          
+        #PC <- Ra, salto a fectc
+        (SelA=1, MR, T9, M2=0, C2, A0, B, C=0)
+          
+   }
+}
+
+
+hcf {
+   co=100011,
+   nwords=1,
+   {
+     	#SR <- x0
+     	(ExCode=0000, T11, M7=0, C7),
+
+        #PC <- x0, salto a fecth
+        (ExCode=0000, T11, M2=0, C2, A0, B, C=0)
+          
+   }
+}
